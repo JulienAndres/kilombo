@@ -69,7 +69,7 @@ void set_callback_reset(void (*fp)(void))
 
 void set_callback_botinfo(char*(*fp)(void))
 {
-  callback_botinfo = fp; 
+  callback_botinfo = fp;
 }
 
 void set_callback_json_state(json_t*(*fp)(void))
@@ -92,7 +92,7 @@ void set_callback_lighting(int16_t (*fp)(double, double))
 {
   user_light = fp;
 }
-  
+
 // OBSOLETE callback setting functions - will be removed
 
 void register_user_obstacles(int16_t (*fp)(double, double, double *, double *)){
@@ -106,7 +106,7 @@ void register_user_lighting(int16_t (*fp)(double, double))
 
 void register_callback(Callback_t type, void (*fp)(void))
 {
-  // Register a callback. 
+  // Register a callback.
 
   switch (type)
     {
@@ -153,11 +153,11 @@ kilobot *new_kilobot(int ID, int n_bots)
     }
   bot->p_hist = 0;
   bot->l_hist = 0;
-  
+
   bot->radius = 17;                  // mm
-  bot->leg_angle = 125.5 * M_PI/180; // angle front leg - center - rear leg. 
+  bot->leg_angle = 125.5 * M_PI/180; // angle front leg - center - rear leg.
                                      // 125.5 degrees measured from kilobot PCB design files
-  
+
   bot->right_motor_power = 0;
   bot->left_motor_power = 0;
 
@@ -165,19 +165,19 @@ kilobot *new_kilobot(int ID, int n_bots)
   bot->right_motor_offset = 60 + rnd_gauss(0, simparams->offsetVariation);
   bot->left_motor_slope = 1.0 + rnd_gauss(0, simparams->slopeVariation);
   bot->right_motor_slope = 1.0 + rnd_gauss(0, simparams->slopeVariation);
-  
+
   bot->speed = simparams->speed + rnd_gauss(0, simparams->speedVariation);
   bot->turn_rate_l = 0;
   bot->turn_rate_r = 0;
 
-  
+
   bot->direction = (2 * M_PI / 4);
   bot->r_led = 0;
   bot->g_led = 0;
   bot->b_led = 0;
 
   bot->cr = simparams->commsRadius;
-            
+
   bot->in_range = (int*) malloc(sizeof(int) * n_bots);
   bot->n_in_range = 0;
 
@@ -185,13 +185,13 @@ kilobot *new_kilobot(int ID, int n_bots)
 
   bot->user_setup = NULL;
   bot->user_loop  = NULL;
-  
+
   bot->kilo_message_tx = message_tx_dummy;
   bot->kilo_message_tx_success = message_tx_success_dummy;
   bot->kilo_message_rx = message_rx_dummy;
 
   bot->data = malloc(UserdataSize);
-  
+
   return bot;
 }
 
@@ -249,7 +249,7 @@ kilobot *Me()
  */
 void prepare_bot(kilobot *bot)
 {
-  current_bot = bot; 
+  current_bot = bot;
   kilo_uid                = bot->ID;
   mydata                  = bot->data;
   kilo_message_rx         = bot->kilo_message_rx;
@@ -276,7 +276,7 @@ void dump_bot_info(kilobot *self)
 {
   /* Dump bot info to stdout. */
 
-  printf("B %d: At (%f, %f), speed (%d, %d)\n", 
+  printf("B %d: At (%f, %f), speed (%d, %d)\n",
     self->ID, self->x, self->y, self->right_motor_power, self->left_motor_power);
 }
 
@@ -324,7 +324,7 @@ void update_bot_history_ring(kilobot *bot)
   bot->y_history[bot->p_hist] = bot->y;
   bot->p_hist++;
 
-  // count valid history entries in the buffer 
+  // count valid history entries in the buffer
   if (bot->l_hist < simparams->histLength)
     bot->l_hist++;
 }
@@ -365,10 +365,10 @@ void turn_bot_right(kilobot *bot, float timestep)
   double x_r = bot->x + r * sin(bot->direction + bot->leg_angle);
   double y_r = bot->y + r * cos(bot->direction + bot->leg_angle);
   // bot->direction += timestep * (double) (bot->left_motor_power) / 30;
-  bot->direction += timestep * bot->turn_rate_r; 
+  bot->direction += timestep * bot->turn_rate_r;
   // note: turn_rate_r is in radians per sec
   // note: motor power is ignored
-  
+
   bot->x = x_r - r * sin(bot->direction + bot->leg_angle);
   bot->y = y_r - r * cos(bot->direction + bot->leg_angle);
 }
@@ -383,7 +383,7 @@ void turn_bot_left(kilobot *bot, float timestep)
   double x_l = bot->x + r * sin(bot->direction - bot->leg_angle);
   double y_l = bot->y + r * cos(bot->direction - bot->leg_angle);
   //  bot->direction -= timestep * (double) (bot->right_motor_power) / 30;
-  bot->direction -= timestep * bot->turn_rate_l; 
+  bot->direction -= timestep * bot->turn_rate_l;
   // note: turn_rate_r is in radians per sec
   // note: motor power is ignored
   bot->x = x_l - r * sin(bot->direction - bot->leg_angle);
@@ -481,22 +481,40 @@ void separate_clashing_bots(kilobot* bot1, kilobot* bot2)
    */
 
   double p1 = 1, p2 = 1;
-  
+
   int m1 = bot1->left_motor_power || bot1->right_motor_power;
   int m2 = bot2->left_motor_power || bot2->right_motor_power;
-  
+
   if (m1 && !m2)
   	p2 = simparams->pushDisplacement;
   else if (!m1 && m2)
     p1 = simparams->pushDisplacement;
 
   coord2D suv = separation_unit_vector(bot1, bot2);
-  bot1->x -= p1 * suv.x;
-  bot1->y -= p1 * suv.y;
-  bot2->x += p2 * suv.x;
-  bot2->y += p2 * suv.y;
+  if(!isNotMovable(bot1)){
+    bot1->x -= p1 * suv.x;
+    bot1->y -= p1 * suv.y;
+  }
+  if(!isNotMovable(bot2)){
+      bot2->x += p2 * suv.x;
+      bot2->y += p2 * suv.y;
+  }
 }
 
+int isNotMovable(kilobot * bot)
+{
+  /*
+  * Determine wether or not the bot should be move
+  */
+
+  int i=0;
+  int size=simparams->sizeNoMovable;
+  for(;i<size;i++){
+    if (bot->ID==simparams->noMovable[i])
+        return 1;
+  }
+  return 0;
+}
 
 /* Functions for determining which bots can communicate with each other. */
 
@@ -537,7 +555,7 @@ void update_interactions(int n_bots)
   double d_sq = 4*r*r;
   double communication_radius = allbots[0]->cr;
   double communication_radius_sq = communication_radius * communication_radius;
-  
+
   //printf("update_interactions!\n");
 
   reset_n_in_range_indices(n_bots);
@@ -558,7 +576,7 @@ void update_interactions(int n_bots)
       double bot2bot_sq_distance = bot_sq_dist(allbots[i], allbots[j]);
 
       if (bot2bot_sq_distance < d_sq) {
-        //printf("Whack %d %d\n", i, j); 
+        //printf("Whack %d %d\n", i, j);
         separate_clashing_bots(allbots[i], allbots[j]);
         // We move the bots, this changes the distance.
         // So bot2bot_distance should be recalculated.
@@ -612,33 +630,33 @@ double rnd_uniform()
 double rnd_gauss (double mean, double sig)
 	{
 	double x, y, r2;
-	
+
 	do
 		{
 		// choose x,y in uniform square (-1,-1) to (+1,+1)
 		x = -1.0 + 2.0 * rnd_uniform();
 		y = -1.0 + 2.0 * rnd_uniform();
-		
+
 		// see if it is in the unit circle
 		r2 = x * x + y * y;
 		}
 	while (r2 > 1.0 || r2 == 0.0);
-	
+
 	// Box-Muller transform
 	return mean + sig * y * sqrt (-2.0 * log (r2) / r2);
 	}
 
 /* Simulate a distance measurement
  * with optional gaussian noise and a linear correction.
- * 
- * observations, with bots on whiteboard, not yet simulated 
+ *
+ * observations, with bots on whiteboard, not yet simulated
  * - more noise on long distances, maybe noise proportional to distance-d0
- * - measured distance vs distance starts as linear but flattens out at ~100 mm . 
+ * - measured distance vs distance starts as linear but flattens out at ~100 mm .
  */
 double noisy_distance(double dist)
 {
   double alpha = simparams->distanceCoefficient;
-  double d0 = 2 * allbots[0]->radius; 
+  double d0 = 2 * allbots[0]->radius;
 
   // apply linear transformation on the distance.
   // assume that touching bots report the correct distance, and that longer distances scale with alpha.
@@ -647,13 +665,13 @@ double noisy_distance(double dist)
   // add noise
   if (simparams->distance_noise > 0.0)
     dist += rnd_gauss(0, simparams->distance_noise);
-  
+
   return dist > 0 ? dist : 0;
 }
 
 int message_success()
 {
-  return simparams->msg_success_rate >= 1 ? 
+  return simparams->msg_success_rate >= 1 ?
     1 : (double)rand() / RAND_MAX <= simparams->msg_success_rate;
 }
 
@@ -678,7 +696,7 @@ void pass_message(kilobot* tx)
 	if (simparams->GUI)
 	  addCommLine(tx, rx);
 #endif
-	
+
 	if (message_success()) // messages arrive with some probability
 	  {
 	    /* Set up a distance measurement structure.
@@ -687,13 +705,13 @@ void pass_message(kilobot* tx)
 	     */
 	    distm.low_gain = 0;
 	    distm.high_gain = noisy_distance(bot_dist(tx, rx));
-	    
+
 	    prepare_bot(rx);
 	    kilo_message_rx(msg, &distm);
 	    finalize_bot(rx);
 	  }
       }
-      
+
       // Switch to the transmitting bot, to call kilo_message_tx_success().
       prepare_bot(tx);
       kilo_message_tx_success();
@@ -704,7 +722,7 @@ void pass_message(kilobot* tx)
       tx->tx_enabled = 0;
     }
 }
- 
+
 void process_messaging(int n_bots)
 {
   /* Update messaging between bots. */
@@ -779,7 +797,7 @@ void spread_out(int n_bots, double k)
 	// arbitrary cap to avoid large forces
 	if (r < 5)
 	  r = 5;
-	
+
 	// a force
 	double fx = 1/(r*r) * dx/r ;
 	double fy = 1/(r*r) * dy/r;
@@ -787,7 +805,7 @@ void spread_out(int n_bots, double k)
 	allbots[i]->x += fx * k;
 	allbots[i]->y += fy * k;
 	allbots[j]->x -= fx * k;
-	allbots[j]->y -= fy * k;	
+	allbots[j]->y -= fy * k;
       }
 }
 

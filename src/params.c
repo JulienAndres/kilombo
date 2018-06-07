@@ -64,11 +64,13 @@ void parse_param_file(const char *filename)
   simparams->turn_rate            = get_float_param("turnRate", 13);
   simparams->offsetVariation        = get_float_param("turnOffsetVariation", 0);
   simparams->slopeVariation        = get_float_param("turnSlopeVariation", 0);
-  simparams->pushDisplacement     = get_float_param("pushDisplacement", 1.0); 
+  simparams->pushDisplacement     = get_float_param("pushDisplacement", 1.0);
   simparams->distanceCoefficient  = get_float_param("distanceCoefficient", 1.0);
   simparams->displayX             = get_float_param("displayX", 0);
   simparams->displayY             = get_float_param("displayY", 0);
   simparams->useGrid              = get_int_param("useGrid", 1);
+  simparams->noMovable            = get_int_array("noMovable");
+  simparams->sizeNoMovable        = get_array_param_size("noMovable");
 }
 
 int get_int_param(const char *param_name, int default_val)
@@ -123,6 +125,22 @@ size_t get_array_param_size(const char * param_name){
   }
 
   return json_array_size(param);
+}
+
+int * get_int_array(const char * param_name)
+{
+  if (!simparams) {
+    fprintf(stderr, "Error: attempted to read parameter without loading parameter file\n");
+    exit(2);
+  }
+  json_t *param = json_object_get(simparams->root, param_name);
+  size_t taille=get_array_param_size(param_name);
+  int * toRet=(int*)malloc(taille*sizeof(int));
+  int i=0;
+  for (;i<taille;i++){
+    toRet[i]=get_int_array_param(param_name,i,0);
+  }
+  return toRet;
 }
 
 int get_int_array_param(const char * param_name, int index, int default_val)

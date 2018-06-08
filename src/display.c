@@ -27,6 +27,7 @@ extern void (*callback_F5) (void) ; // function pointer to user-defined callback
 extern void (*callback_F6) (void) ; // function pointer to user-defined callback function for F6 press
                                     // run for *ALL* bots in sequence, used for reset
 extern char* (*callback_botinfo) (void) ; // function pointer to user-defined callback function for bot info
+extern int16_t (*user_obstacles)(double, double, double *, double *);
 
 SDL_Surface *screen;
 
@@ -39,7 +40,7 @@ ColorScheme darkColors = {
   .bot_right_leg  = 0xffffffff,
   .bot_line_front = 0x0000ffff,
   .bot_arrow      = 0xffffffff,
-  .comm           = 0xffffff66, 
+  .comm           = 0xffffff66,
   .LEDa           = 0,
   .LEDb           = 85,
   .anti_alias      = 0,
@@ -140,7 +141,7 @@ void rotateBot (kilobot *bot)
 {
   int x, y;
   SDL_GetMouseState (&x, &y);
-  
+
   bot->direction = angle + (x-rotX0)*.05;
 }
 
@@ -178,7 +179,7 @@ void screenshot (SDL_Surface *s)
   if (screenshotN == 0) //at the first screenshot, make directory
     mkdir ("screenshots", 0777);
   // windows: use _mkdir ("screenshots");
-  
+
   char fileName[200];
 
   while(1)
@@ -201,11 +202,11 @@ void screenshot (SDL_Surface *s)
 void input(void)
 {
   static int save_tx_period_ticks = 1;
- 
+
   int i;
-  SDL_Event event;      
-  while (SDL_PollEvent(&event)) 
-    switch(event.type) 
+  SDL_Event event;
+  while (SDL_PollEvent(&event))
+    switch(event.type)
       {
       case SDL_QUIT:
 	quit = 1;
@@ -213,8 +214,8 @@ void input(void)
       case SDL_KEYDOWN:
 	switch( event.key.keysym.sym )
 	  {
-	  case SDLK_ESCAPE:  
-	    quit = 1;           
+	  case SDLK_ESCAPE:
+	    quit = 1;
 	    break;
 	  case SDLK_s:
 	    screenshot(screen);
@@ -278,12 +279,12 @@ void input(void)
   // these are for keys that should have an effect as long as the key is held down
   // for once/keypress events, use the switch above.
   Uint8 *keystates = SDL_GetKeyState(NULL);
-  
+
   double s = 1.05; // magnification factor per frame
   int d = 20/simparams->display_scale;      // amount to move per frame
   if (d < 1)
     d = 1;
-  
+
   if (keystates[SDLK_KP_PLUS] || keystates[SDLK_PLUS] || keystates[SDLK_p])
     {
       simparams->display_scale *= s;
@@ -297,9 +298,9 @@ void input(void)
   if (keystates[SDLK_RIGHT])
    c_x += d;
  if (keystates[SDLK_LEFT])
-   c_x -= d; 
+   c_x -= d;
  if (keystates[SDLK_UP])
-   c_y -= d; 
+   c_y -= d;
  if (keystates[SDLK_DOWN])
    c_y += d;
  if (keystates[SDLK_KP_MULTIPLY] ||
@@ -322,7 +323,7 @@ void input(void)
 void init_SDL(void)
 {
   if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO|SDL_INIT_JOYSTICK) < 0)  {
-    dieSDL("SDL init failed: %s\n"); 
+    dieSDL("SDL init failed: %s\n");
   }
 
   // set font
@@ -332,16 +333,16 @@ void init_SDL(void)
 /* ***   Icon Loading Stuff   *** */
 
 
-// the following is not in use due to difficulties with transparency 
+// the following is not in use due to difficulties with transparency
 
-// include bitmap data for the icon in PNM (P6) format 
+// include bitmap data for the icon in PNM (P6) format
 //#include "icon2-48px.h"
 
 /* make an SDL surface from PNM (P6) data. Used for the program icon.
  * Complication: the image stored does not have an alpha channel.
  * The icon needs a transparent background to look nice.
  * Setting a colorkey for transparency doesn't semm to work.
- * Workaround: blit the icon to another surface which has an 
+ * Workaround: blit the icon to another surface which has an
  * an alpha channel, this works.
  */
 SDL_Surface* surf_from_pnm(char *data)
@@ -349,22 +350,22 @@ SDL_Surface* surf_from_pnm(char *data)
   int x, y, maxval, n;
   char *img;
   if (strncmp(data, "P6\n", 3))
-    { 
+    {
       printf("Unknown format in surf_from_pnm\n");
       return NULL;
     }
   char header[5];
-  
+
   sscanf (data, "%s %d %d %d %n", header, &x, &y, &maxval, &n);
   // n  contains the number of characters used
   // white space after last %d is important
-  
+
   //printf ("image is %dx%d. header is %s. maxval is %d\n",
   //x, y, header, maxval);
 
   // find start of the raw data
   img = data + n;
-  
+
   int rmask, gmask, bmask, amask;
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
   rmask = 0xff000000;
@@ -379,11 +380,11 @@ SDL_Surface* surf_from_pnm(char *data)
 #endif
     SDL_Surface *surface =
     SDL_CreateRGBSurfaceFrom(img, x, y, 24, x*3, rmask, gmask, bmask, 0);
-  
+
   // create second surface, with alpha channel
   SDL_Surface *surface2 = SDL_CreateRGBSurface(SDL_SWSURFACE,x,y,32, rmask, gmask, bmask, amask);
   SDL_FillRect(surface2, NULL, 0); // fill with transparent color
-  
+
   // make the black color transparent - doesn't
   // work directly as icon, but works if first blitted to another surface.
   SDL_SetColorKey(surface, SDL_SRCCOLORKEY, 0);
@@ -416,7 +417,7 @@ SDL_Surface *makeIcon(void)
 SDL_Surface *makeWindow(void)
 {
   SDL_Surface *screen;
-  
+
   const SDL_VideoInfo *info = SDL_GetVideoInfo();
 
   //printf("Screen %d x %d\n", info->current_w, info->current_h);
@@ -428,8 +429,8 @@ SDL_Surface *makeWindow(void)
       simparams->display_w = info->current_w * simparams->displayWidthPercent;
       simparams->display_h = info->current_h * simparams->displayHeightPercent;
     }
-  
-    
+
+
   SDL_WM_SetCaption(simparams->bot_name, simparams->bot_name);
 
   screen = SDL_SetVideoMode(simparams->display_w, simparams->display_h, 32,
@@ -444,12 +445,12 @@ SDL_Surface *makeWindow(void)
     SDL_WM_SetIcon(icon, NULL);
   else
     printf("No icon found\n");
-  
+
   return screen;
 }
 
 
-/* Create an SDL surface. 
+/* Create an SDL surface.
  * from SDL docs example: https://wiki.libsdl.org/SDL_CreateRGBSurface
  */
 SDL_Surface * makeSurface(void)
@@ -478,14 +479,14 @@ SDL_Surface * makeSurface(void)
 	return NULL;
 	//printf ("When running without GUI, specify an absolute size of the images\n");
       }
-    
+
     surface = SDL_CreateRGBSurface(0, width, height, 32,
                                    rmask, gmask, bmask, amask);
-    if(surface == NULL) 
+    if(surface == NULL)
       dieSDL ("CreateRGBSurface failed: %s\n");
     return surface;
 }
-    
+
 
 
 
@@ -493,6 +494,21 @@ Uint32 conv_RGBA(int r, int g, int b, int a)
 {
   return a + (b << 8) + (g << 16) + (r << 24);
 }
+
+// void draw_obstacleLines(SDL_Surface *surface)
+// {
+//   if (user_obstacles!=NULL){
+//     int x1 = 1;
+//     int y1 = 1;
+//     int x2 =1;
+//     int y2 =1;
+//     if(colorscheme->anti_alias){
+//       aalineColor (surface, x1, y1, x2, y2, colorscheme->comm);
+//     }else{
+//       lineColor (surface, x1, y1, x2, y2, colorscheme->comm);
+//       }
+//   }
+// }
 
 void draw_commLines(SDL_Surface *surface)
 {
@@ -502,10 +518,10 @@ void draw_commLines(SDL_Surface *surface)
       kilobot *from = commLines[i].from;
       kilobot *to   = commLines[i].to;
 
-      int x1 = simparams->display_w/2 + simparams->display_scale * (from->x - c_x); 
+      int x1 = simparams->display_w/2 + simparams->display_scale * (from->x - c_x);
       int y1 = simparams->display_h/2 + simparams->display_scale * (from->y - c_y);
-      int x2 = simparams->display_w/2 + simparams->display_scale * (to->x - c_x); 
-      int y2 = simparams->display_h/2 + simparams->display_scale * (to->y - c_y);  
+      int x2 = simparams->display_w/2 + simparams->display_scale * (to->x - c_x);
+      int y2 = simparams->display_h/2 + simparams->display_scale * (to->y - c_y);
 
       if (colorscheme->anti_alias)
 	aalineColor (surface, x1, y1, x2, y2, colorscheme->comm);
@@ -568,7 +584,7 @@ void draw_bot_history_ring(SDL_Surface *surface, int w, int h, kilobot *bot)
 
 
 /* Draw the kilobots.
- * 
+ *
  * Experimental anti-alias support can be enabled by setting .anti_alias = 1 in the color scheme.
  * Antialiasing is done using the aa-primitives from the gfx_library.
  * Unfortunately, filled circles and triangles are not implemented, so antialiasing for those
@@ -578,12 +594,12 @@ void draw_bot(SDL_Surface *surface, int w, int h, kilobot *bot)
 {
   int r = bot->radius;
   float scale = simparams->display_scale;
- 
+
   /* Draw the bot's body */
-    
+
   int draw_x = w/2 + scale * (bot->x - c_x);
   int draw_y = h/2 + scale * (bot->y - c_y);
-  
+
   bot->screen_x = draw_x;
   bot->screen_y = draw_y;
   int rBody = scale * r;
@@ -598,23 +614,23 @@ void draw_bot(SDL_Surface *surface, int w, int h, kilobot *bot)
   int y_front = draw_y + scale * r * cos(bot->direction);
   lineColor(screen, draw_x, draw_y, x_front, y_front, colorscheme->bot_line_front);
 
-  
+
   /* Draw legs */
   //int x_l = draw_x - scale * r * cos(bot->direction);
   //int y_l = draw_y + scale * r * sin(bot->direction);
   int x_l = draw_x + scale * r * sin(bot->direction + bot->leg_angle);
   int y_l = draw_y + scale * r * cos(bot->direction + bot->leg_angle);
-    
+
   //int x_r = draw_x + scale * r * cos(bot->direction);
   //int y_r = draw_y - scale * r * sin(bot->direction);
   int x_r = draw_x + scale * r * sin(bot->direction - bot->leg_angle);
   int y_r = draw_y + scale * r * cos(bot->direction - bot->leg_angle);
-  if (colorscheme->anti_alias && scale > 1) // for smaller scales it draws weird legs 
+  if (colorscheme->anti_alias && scale > 1) // for smaller scales it draws weird legs
     {
       aacircleColor(surface, x_r, y_r, scale * 2, colorscheme->bot_right_leg);
       aacircleColor(surface, x_l, y_l, scale * 2, colorscheme->bot_left_leg);
     }
-  
+
   filledCircleColor(surface, x_l, y_l, scale * 2, colorscheme->bot_left_leg);
   filledCircleColor(surface, x_r, y_r, scale * 2, colorscheme->bot_right_leg);
 
@@ -633,7 +649,7 @@ void draw_bot(SDL_Surface *surface, int w, int h, kilobot *bot)
     aacircleColor(surface, draw_x, draw_y, rLED, led_color);
   filledCircleColor(surface, draw_x, draw_y, rLED, led_color);
 
-  
+
   /* Draw a triangle pointing forward */
   int txf = draw_x + scale * r*.4 * sin(bot->direction);
   int tyf = draw_y + scale * r*.4 * cos(bot->direction);
@@ -645,7 +661,7 @@ void draw_bot(SDL_Surface *surface, int w, int h, kilobot *bot)
   if (colorscheme->anti_alias)
     aatrigonColor (screen, txf, tyf, tx1, ty1, tx2, ty2, colorscheme->bot_arrow);
   filledTrigonColor (screen, txf, tyf, tx1, ty1, tx2, ty2, colorscheme->bot_arrow);
-  
+
 
   /* Draw transmit radius */
   if (simparams->showCommsRadius) {
@@ -653,7 +669,7 @@ void draw_bot(SDL_Surface *surface, int w, int h, kilobot *bot)
       if (colorscheme->anti_alias)
 	aacircleColor(surface, draw_x, draw_y, scale * bot->cr, colorscheme->comm);
       else
-	circleColor(surface, draw_x, draw_y, scale * bot->cr, colorscheme->comm);      
+	circleColor(surface, draw_x, draw_y, scale * bot->cr, colorscheme->comm);
     }
   }
 
@@ -672,7 +688,7 @@ void displayString (SDL_Surface *surface, int x, int y, char *s)
     if (s[i] == 0)
       done = 1;
     s[i] = 0;
-    
+
     stringColor (surface, x, y, s, colorscheme->text);
     s += i+1;
     y += 10;
@@ -688,8 +704,8 @@ void draw_status(SDL_Surface *surface, int w, int h, double time, double FPS)
   sprintf(buf, "%3dx    time: %8.1f     kilo_ticks: %8d     FPS: %5.1f",
 	  simparams->stepsPerFrame, time, kilo_ticks, FPS);
   displayString(surface, 10, 2, buf);
-  
-  
+
+
   // find bot under cursor
   int x, y;
   SDL_GetMouseState (&x, &y);
@@ -700,11 +716,12 @@ void draw_status(SDL_Surface *surface, int w, int h, double time, double FPS)
       //switch to this bot
       prepare_bot(allbots[i]);
       char *s = callback_botinfo();
-      displayString(surface, 10, h-30, s);
+      int j=0;
+      int cpt=1;
+      while(s[j]!='\0'){
+        if (s[j]=='\n') cpt++;
+        j++;
+      }
+      displayString(surface, 10, h-(cpt*10), s);
     }
 }
-
-
-
-
-

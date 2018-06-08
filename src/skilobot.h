@@ -19,11 +19,11 @@ typedef struct {
   double x, y;
   double *x_history, *y_history;
   int p_hist; // current index in history (ring) buffer
-  int n_hist; // size of the history ring buffer 
+  int n_hist; // size of the history ring buffer
   int l_hist; // number of history points stored
-  
+
   // motor power; translates non-linearly into speed
-  int right_motor_power, left_motor_power;   
+  int right_motor_power, left_motor_power;
 
   // parameters for the function that translates power to speed
   // these are modified in setup if stochasticity is set
@@ -33,7 +33,7 @@ typedef struct {
   // actual physical speed
   double speed;                     // speed in mm / s
   double turn_rate_l, turn_rate_r;  // turning rate right and left, radians / s
-  
+
   int ID;
   double direction; // Angle relative to constant x, +ve y in radians
   int r_led, g_led, b_led;
@@ -47,10 +47,10 @@ typedef struct {
   double cr; // Communication radius
   int tx_enabled;  //1 if the bot is transmitting - used for drawing communication circles
   int tx_ticks;    //the time in ticks when this bot is to transmit next
-  
+
   int screen_x, screen_y; //where the bot is drawn on screen
 
-  /* Random number generator */ 
+  /* Random number generator */
   uint8_t seed;  //for the software random number generator
   uint8_t accumulator;
 
@@ -58,13 +58,13 @@ typedef struct {
   void (*user_setup)(void);
   void (*user_loop)(void);
 
-  // 
+  //
   message_tx_t kilo_message_tx;
   message_tx_success_t kilo_message_tx_success;
   message_rx_t kilo_message_rx;
-  
+
   void *data;
-  
+
 } kilobot;
 
 typedef struct {
@@ -72,7 +72,7 @@ typedef struct {
   double y;
 } coord2D;
 
-typedef struct 
+typedef struct
 {
   kilobot *from;
   kilobot *to;
@@ -100,6 +100,7 @@ void process_bots(int n_bots, float timestep);
 void update_interactions(int n_bots);
 coord2D separation_unit_vector(kilobot* bot1, kilobot* bot2);
 void separate_clashing_bots(kilobot* bot1, kilobot* bot2);
+int isNotMovable(kilobot * bot);
 void spread_out(int n_bots, double k);
 
 extern kilobot* current_bot;

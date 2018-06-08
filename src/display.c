@@ -34,7 +34,7 @@ SDL_Surface *screen;
 // note! background is different from the rest, in the format 0x00RRGGBB
 ColorScheme darkColors = {
   .background     = 0x00000000,
-  .text           = 0xffffffff,
+  .text           = 0x00ff0000,
   .bot_border     = 0xffffffff,
   .bot_left_leg   = 0xffffffff,
   .bot_right_leg  = 0xffffffff,
@@ -688,7 +688,6 @@ void displayString (SDL_Surface *surface, int x, int y, char *s)
     if (s[i] == 0)
       done = 1;
     s[i] = 0;
-
     stringColor (surface, x, y, s, colorscheme->text);
     s += i+1;
     y += 10;

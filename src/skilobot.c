@@ -491,6 +491,7 @@ void separate_clashing_bots(kilobot* bot1, kilobot* bot2)
     p1 = simparams->pushDisplacement;
 
   coord2D suv = separation_unit_vector(bot1, bot2);
+
   if(!isNotMovable(bot1)){
     bot1->x -= p1 * suv.x;
     bot1->y -= p1 * suv.y;
@@ -504,9 +505,10 @@ void separate_clashing_bots(kilobot* bot1, kilobot* bot2)
 int isNotMovable(kilobot * bot)
 {
   /*
-  * Determine wether or not the bot should be move
+  * Determine wether or not the bot should be moved
   */
-
+  if (simparams->sizeNoMovable==-1)
+    return 0;
   int i=0;
   int size=simparams->sizeNoMovable;
   for(;i<size;i++){

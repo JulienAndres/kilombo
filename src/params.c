@@ -71,6 +71,8 @@ void parse_param_file(const char *filename)
   simparams->useGrid              = get_int_param("useGrid", 1);
   simparams->noMovable            = get_int_array("noMovable");
   simparams->sizeNoMovable        = get_array_param_size("noMovable");
+
+  printf("size array %d\n",  simparams->sizeNoMovable );
 }
 
 int get_int_param(const char *param_name, int default_val)
@@ -134,6 +136,12 @@ int * get_int_array(const char * param_name)
     exit(2);
   }
   json_t *param = json_object_get(simparams->root, param_name);
+
+  if (!json_is_array(param)) {
+    fprintf(stderr, "Requested parameter: %s is not an array.\n", param_name);
+    return NULL;
+  }
+
   size_t taille=get_array_param_size(param_name);
   int * toRet=(int*)malloc(taille*sizeof(int));
   int i=0;
